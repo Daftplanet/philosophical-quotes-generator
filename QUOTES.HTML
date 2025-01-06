@@ -1,0 +1,289 @@
+import React, { useState, useMemo, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Quote, Filter, Facebook, Linkedin, Link2, Check, Download, Moon, Sun } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+const XLogo = ({ className }) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <path fill="currentColor" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+  </svg>
+);
+
+const QuoteGenerator = () => {
+  const quotes = {
+    greek: [
+      { text: "The only true wisdom is in knowing you know nothing.", author: "Socrates" },
+      { text: "Excellence is not an act, but a habit.", author: "Aristotle" },
+      { text: "Everything flows and nothing abides.", author: "Heraclitus" }
+    ],
+    eastern: [
+      { text: "Be the change you wish to see in the world.", author: "Mahatma Gandhi" },
+      { text: "Empty your mind, be formless, shapeless, like water.", author: "Bruce Lee" },
+      { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" }
+    ],
+    modern: [
+      { text: "Man is condemned to be free.", author: "Jean-Paul Sartre" },
+      { text: "God is dead.", author: "Friedrich Nietzsche" },
+      { text: "I think, therefore I am.", author: "René Descartes" }
+    ],
+    existential: [
+      { text: "Life has no meaning a priori. It is up to you to give it a meaning.", author: "Jean-Paul Sartre" },
+      { text: "The universe is not hostile, nor yet is it friendly. It is simply indifferent.", author: "John H. Holmes" },
+      { text: "Existence precedes essence.", author: "Jean-Paul Sartre" }
+    ]
+  };
+
+  const categories = {
+    greek: "Ancient Greek",
+    eastern: "Eastern Philosophy",
+    modern: "Modern Philosophy",
+    existential: "Existentialism"
+  };
+
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+  const [currentQuote, setCurrentQuote] = useState(quotes.greek[0]);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const quoteRef = useRef(null);
+
+  const availableQuotes = useMemo(() => {
+    if (selectedCategory === "all") {
+      return Object.values(quotes).flat();
+    }
+    return quotes[selectedCategory] || [];
+  }, [selectedCategory]);
+
+  const getRandomQuote = () => {
+    setIsAnimating(true);
+    const randomQuote = availableQuotes[Math.floor(Math.random() * availableQuotes.length)];
+    setCurrentQuote(randomQuote);
+    setTimeout(() => setIsAnimating(false), 500);
+  };
+
+  const handleShare = async (platform) => {
+    const shareText = `"${currentQuote.text}" - ${currentQuote.author}`;
+    
+    if (navigator.share && (platform === 'x' || platform === 'facebook')) {
+      try {
+        await navigator.share({
+          text: shareText,
+          title: 'Philosophical Quote'
+        });
+        return;
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
+    }
+
+    const shareUrls = {
+      x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`,
+      facebook: `https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(shareText)}`,
+      linkedin: `https://www.linkedin.com/shareArticle?mini=true&summary=${encodeURIComponent(shareText)}&title=${encodeURIComponent('Philosophical Quote')}`
+    };
+
+    window.open(shareUrls[platform], '_blank', 'noopener,noreferrer');
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(`"${currentQuote.text}" - ${currentQuote.author}`);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const downloadQuoteImage = () => {
+    const backgroundColor = isDarkMode ? '#1f2937' : '#ffffff';
+    const textColor = isDarkMode ? '#ffffff' : '#000000';
+    const decorativeColor = isDarkMode ? '#374151' : '#f3f4f6';
+    
+    const svgData = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="800" height="400">
+        <rect width="800" height="400" fill="${backgroundColor}"/>
+        <text x="40" y="100" fill="${decorativeColor}" font-size="72px" font-family="serif" font-weight="bold">"</text>
+        <text x="720" y="300" fill="${decorativeColor}" font-size="72px" font-family="serif" font-weight="bold">"</text>
+        <text x="50" y="180" fill="${textColor}" font-size="24px" font-family="serif" font-style="italic">${currentQuote.text}</text>
+        <text x="600" y="350" fill="${textColor}" font-size="20px" font-family="sans-serif">- ${currentQuote.author}</text>
+      </svg>
+    `;
+
+    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'philosophical-quote.svg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+    if (!isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
+  return (
+    <div className={`min-h-screen p-4 transition-colors duration-300 ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      <Card className="w-full max-w-lg mx-auto dark:bg-gray-800">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Quote className="h-6 w-6" />
+              <span className="dark:text-white">Philosophical Quotes</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleDarkMode}
+                className="rounded-full dark:border-gray-600"
+              >
+                {isDarkMode ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-[180px] dark:border-gray-600">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {Object.entries(categories).map(([key, value]) => (
+                      <SelectItem key={key} value={key}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div 
+            ref={quoteRef}
+            className={`space-y-4 transition-opacity duration-500 min-h-[160px] flex flex-col justify-center
+              ${isAnimating ? 'opacity-0' : 'opacity-100'}`}
+          >
+            <p className="text-xl font-serif italic dark:text-white">"{currentQuote.text}"</p>
+            <p className="text-right text-gray-600 dark:text-gray-400">- {currentQuote.author}</p>
+          </div>
+        </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+          <Button 
+            onClick={getRandomQuote}
+            className="w-full"
+          >
+            Generate New Quote
+          </Button>
+          <div className="flex justify-center gap-4">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleShare('x')}
+                    className="rounded-full dark:border-gray-600"
+                  >
+                    <XLogo className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Share on X (Twitter)</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleShare('facebook')}
+                    className="rounded-full dark:border-gray-600"
+                  >
+                    <Facebook className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Share on Facebook</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleShare('linkedin')}
+                    className="rounded-full dark:border-gray-600"
+                  >
+                    <Linkedin className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Share on LinkedIn</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={copyToClipboard}
+                    className="rounded-full dark:border-gray-600"
+                  >
+                    {copySuccess ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Link2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {copySuccess ? 'Copied!' : 'Copy to clipboard'}
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={downloadQuoteImage}
+                    className="rounded-full dark:border-gray-600"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download as Image</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
+  );
+};
+
+export default QuoteGenerator;
